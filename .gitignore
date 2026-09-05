@@ -1,0 +1,36 @@
+# ── Secrets / local config ──
+.env
+core/config.py          # contains real API keys when filled in locally
+config/*.local.json
+
+# ── Personal memory state (the trained personality / data is never committed) ──
+memory/*.json
+!memory/*.example.json
+memory/leaves/
+memory/backups/
+memory/archive/
+memory/diary_archive/
+
+# ── Runtime / derived ──
+logs/
+cache/
+*.log
+core/*.lock
+core/cloe_portal_state.json
+core/chrome_profile/
+orb_state.json
+
+# ── Build artifacts ──
+node_modules/
+target/
+__pycache__/
+*.pyc
+orb/src-tauri/gen/
+dist/
+build/
+
+# ── OS / editor ──
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
