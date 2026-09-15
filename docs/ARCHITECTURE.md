@@ -18,7 +18,7 @@ flowchart TB
     subgraph Models["Local models (Ollama)"]
         M1["Mistral-Nemo 12B\nreasoning / chat"]
         M2["qwen2.5-coder\ncoding sub-mind"]
-        M3["moondream\nvision"]
+        M3["moondream\nvision (disconnected —\npending GPU-swap reconnect)"]
     end
 
     subgraph Skills["Skill sub-minds"]
@@ -36,7 +36,7 @@ flowchart TB
     Core <--> Memory
     Core --> M1
     Core --> M2
-    Core --> M3
+    Core -.-> M3
     Core <--> Raphael
     Core <--> Metatron
     Core <--> Vretil
@@ -63,7 +63,7 @@ A few decisions run through the whole system and show up again and again in the 
 
 **Flask core.** The single hub that the overlay and the mobile client both talk to. It owns request routing to the right model, current mood state, and the autonomous background loops (self-directed research, internal thought). It treats the graph memory and each skill sub-mind as services it coordinates rather than code it contains.
 
-**Local models.** Three models held resident simultaneously on one consumer GPU, each with a fixed role rather than one general-purpose model doing everything. Single-GPU residency means VRAM budget is a real constraint — swapping models in and out has a real latency cost, which is a recurring design pressure visible in how the coding sub-mind, Metatron, Jophiel, and skill routing are all structured.
+**Local models.** Models held under Ollama, each with a fixed role rather than one general-purpose model doing everything — reasoning/chat, coding, and vision. The vision role (moondream) is currently disconnected, pending reconnection after a recent GPU swap; it's a design gap to close, not a dropped design decision. Single-GPU residency means VRAM budget is a real constraint for the roles that are live — swapping models in and out has a real latency cost, which is a recurring design pressure visible in how the coding sub-mind, Metatron, Jophiel, and skill routing are all structured.
 
 **Graph memory.** Covered in depth in [`MEMORY_SYSTEM.md`](MEMORY_SYSTEM.md) — a typed graph rather than a flat conversation log, with its own compression, locking, and protection rules.
 

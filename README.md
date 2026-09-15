@@ -48,7 +48,7 @@ Unbounded memory bloats and slows things down, so Cloe compresses her own mind o
 The desktop presence is a **Tauri v2** always-on-top window rendered with true per-pixel transparency, so the orb and its panels float over any application with no opaque background — clicks pass through empty space to the desktop below, but land on Cloe's UI wherever she's actually drawn.
 
 ### Multi-model local orchestration
-Three models held resident under [Ollama](https://ollama.com), each owning a role: **Mistral-Nemo 12B** for reasoning and conversation, **qwen2.5-coder** as a dedicated coding sub-mind, and **moondream** for vision. A Flask backend orchestrates routing, the memory engine, mood state, and the autonomous loops — all on one GPU, which means model residency and VRAM budget are first-class design constraints, not an afterthought.
+Models held under [Ollama](https://ollama.com), each owning a role rather than one general-purpose model doing everything: **Mistral-Nemo 12B** for reasoning and conversation, **qwen2.5-coder** as a dedicated coding sub-mind, and **moondream** for vision (currently disconnected pending reconnection after a recent GPU swap — not removed from the design, just not wired back up yet). A Flask backend orchestrates routing, the memory engine, mood state, and the autonomous loops — all on one GPU, which means model residency and VRAM budget are first-class design constraints, not an afterthought.
 
 ### Autonomous mind
 Cloe isn't reactive-only. Background loops drive self-directed research (she reads and forms knowledge nodes while idle), an internal thought process, and mood drift that colors both her responses and the UI. Every entry in her memory log is self-grown — created by Cloe, unprompted.
@@ -144,8 +144,10 @@ A component-level view — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) fo
 │  Ollama        │         │  Graph memory     │
 │  • mistral-nemo│         │  • 5 typed trees  │
 │  • qwen-coder  │         │  • compressor     │
-│  • moondream   │         │  • archive/backup │
+│  • moondream*  │         │  • archive/backup │
 └────────────────┘         └───────────────────┘
+  * vision role, currently disconnected pending
+    reconnection after a recent GPU swap
 
 ┌───────────────┐ ┌────────────────┐ ┌───────────────┐ ┌────────────────┐
 │  Raphael      │ │  Metatron       │ │  Vretil        │ │  Jophiel        │
@@ -164,7 +166,7 @@ A component-level view — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) fo
 |---|---|
 | Desktop overlay | Tauri v2 (Rust shell) + SVG/HTML/JS |
 | Backend | Python 3.12 · Flask |
-| Models (local) | Ollama — Mistral-Nemo 12B · qwen2.5-coder · moondream |
+| Models (local) | Ollama — Mistral-Nemo 12B · qwen2.5-coder · moondream (vision — currently disconnected, pending reconnection) |
 | Memory | Custom typed-graph store + similarity-based compressor |
 | 3D generation | Self-hosted Hunyuan3D engine (Metatron) |
 | Image generation & editing | Self-hosted ComfyUI — FLUX.1 [schnell] · Qwen-Image-Edit (Jophiel) |
