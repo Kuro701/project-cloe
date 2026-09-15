@@ -19,6 +19,14 @@ This is closer to a small internal code-review process — generate, test, criti
 
 Letting a model-generated candidate run at all means treating its output as untrusted code, not a natural-language reply. The sandbox exists specifically so a bad candidate — one that writes somewhere it shouldn't, deletes something, or tries to reach the network — fails loudly and safely inside its fixture instead of touching anything real. That boundary has been through structured internal review, including checks for gaps in exactly what it does and doesn't restrict; hardening it is treated as ongoing work rather than a one-time guarantee, the same way any sandbox around untrusted, model-generated code has to be.
 
+## What a real audit found: one guard, four ways around it
+
+The sandbox's write guard worked by intercepting the one function most code uses to write a file. That held up fine against normal candidates — until a structured audit stopped reading the guard and started testing it directly, trying every route a candidate could plausibly take to put bytes on disk instead of just the obvious one.
+
+Four of those routes got through untouched. The guard patched a single name, but the same underlying write capability was reachable through at least four sibling entry points that all resolve to the same lower-level operation — deleting and renaming were genuinely blocked, but writing wasn't, for anything that reached the disk by a slightly different door. The worst case wasn't a candidate misbehaving loudly; it was a candidate that could silently overwrite or truncate a real file outside the sandbox while the run's own bookkeeping still reported a clean pass — the exact failure mode a sandbox exists to prevent, quietly not happening.
+
+The fix was to close every one of those doors the same way the first one was closed, then re-run the identical probe suite against the patched guard: every escape route blocked, and ordinary writes *inside* the sandbox still worked exactly as before. The lesson that stuck past this one bug: a guard around a capability isn't verified by reading which function it wraps — it's verified by trying every other way to reach the same effect, and treating anything still open as the bug, not an edge case.
+
 ## Verified answers over confident-sounding ones
 
 A recurring theme in how this pipeline is built: a check that *could* pass silently is worse than one that fails loudly. An unverified result is required to read as unverified in the pipeline's own bookkeeping — never as a quiet pass — because the entire point of the adversarial and scoring steps is to catch the case where something looks fine and isn't.

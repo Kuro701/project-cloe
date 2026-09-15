@@ -14,7 +14,7 @@ Memory is split into five typed trees, each holding nodes of a different kind:
 | `relationship` | What she knows about the people she talks to |
 | `desire` | Goals and things she wants to do or learn |
 
-A live instance carries roughly **3,200 nodes and 29,000 connections.** Nodes cross-link *between* trees, not just within one — a `knowledge` node about a topic can carry a connection to the `mood` node describing how she felt discussing it, and to the `relationship` node for who told her. That cross-linking is what lets her surface something like "I remember you telling me this, and I was excited about it at the time" instead of just retrieving a flat fact.
+A live instance carries roughly **6,700 nodes and 63,000 connections** (growing continuously). Nodes cross-link *between* trees, not just within one — a `knowledge` node about a topic can carry a connection to the `mood` node describing how she felt discussing it, and to the `relationship` node for who told her. That cross-linking is what lets her surface something like "I remember you telling me this, and I was excited about it at the time" instead of just retrieving a flat fact.
 
 ## What a node carries
 
@@ -50,9 +50,17 @@ Compression is triggered automatically once a tree crosses a size threshold, run
 
 Knowledge is deduplicated but never pruned outright; the more personal trees (relationship, mood, personality) are both scored *and* capped, since letting those grow forever is a worse trade than occasionally losing a low-value node.
 
-## Durability
+## Durability — and the bug that made "atomic" not enough
 
 Every write to the memory store goes through an atomic pattern — write to a temporary location, then swap it into place — plus a rotating backup chain, specifically because a mid-write crash (a kill signal, a power loss) should never leave a **partially-written file that looks complete**. That failure mode — silent partial corruption rather than an obvious crash — is the one worth designing against, since it's the one you don't notice until you've already lost data.
+
+The atomic swap alone turned out not to be the whole story, and finding out why took two separate bugs surfacing together.
+
+**The rotation itself had a gap.** Backup rotation worked by moving the current file out of the way to make room for the new one, then putting the new one in its place — two steps, not one. In the sliver of time between them, the canonical file legitimately didn't exist on disk. A read landing in that exact window didn't error; it just saw "no file here" and quietly treated an existing memory store as brand new, ready to be overwritten by whatever it was about to save. The fix was to *copy* the old file aside instead of moving it, so the live path is never briefly absent for any reader.
+
+**Locking the write wasn't the same as locking the update.** Every read-modify-write in the system followed the same three steps: load the current file, apply one change, save it back. The save itself was atomic and safe to run concurrently — but "load, change, save" as a whole was not, because two threads could each load the same starting state, make their own change, and save, with the second save completely overwriting the first thread's work. No error, no warning — just a write that "succeeded" and then silently ceased to exist. A stress test built specifically to surface this made the scale of it concrete: four threads making six hundred small concurrent updates to the same memory file, all reporting success — and only a quarter of those updates were still there afterward. The fix was to lock the entire load-modify-save sequence as one unit rather than only the final write, so a competing update has to wait for the whole operation, not just its last step. The same stress test re-run against the fix came back clean: every update present, every writer's contribution intact.
+
+Both bugs share the same underlying lesson: "atomic" describes one operation, not the sequence of operations built on top of it, and a system that's safe against a torn file can still be unsafe against two threads racing to update the same one.
 
 ## No confabulated time or facts
 

@@ -22,13 +22,15 @@ Cloe is a personal AI companion that runs **100% locally** on consumer hardware 
 
 ---
 
-## 🆕 Latest addition: Vretil
+## 🆕 Latest addition: Jophiel
 
-The newest sub-mind, shipped in the current dev cycle. **[Read the full write-up →](docs/VRETIL.md)**
+The newest sub-mind, shipped this cycle. **[Read the full write-up →](docs/JOPHIEL.md)**
 
-Vretil gives Cloe a standing, always-on relationship to your filesystem: conversational file browse/search/read/summarize, create-and-organize on explicit instruction, a passive "want this written down?" offer that only fires when something actually sounds worth keeping, and a full scheduling/reminders system — one-off and recurring, all delivered back through chat. It runs as its own skill process (matching the tier of the diagnostic and 3D-pipeline sub-minds, not folded into core), presents natively inside the orb overlay as a hand-designed book UI, and self-organizes everything it creates into a flat, registry-backed category system so it never produces folder-in-folder sprawl.
+Jophiel gives Cloe local text-to-image generation and text-instructed image editing — one skill, two connected panel modes (generation and editing) sharing a single toggle whose icon itself morphs to show which mode is active. Built on a self-hosted ComfyUI instance (FLUX.1 [schnell] for generation, Qwen-Image-Edit for editing), it inherits the same VRAM-safety discipline as Metatron below — an explicit engine on/off control rather than an always-resident model, because a third heavy local engine competing for one 12 GB card needed the same budget the 3D pipeline already proved out.
 
-It's also a case study in how this project is actually built: every locked decision below — the write-vs-append heuristic, the permission model, the palette pulled from the *real* running UI rather than guessed, the animation vocabulary matched to code already shipping elsewhere in the app — came out of a recon-first design process before a single line was written.
+It's also a good example of *reusing* engineering rather than repeating it: Jophiel's engine lifecycle was deliberately ported from Metatron's already-proven implementation, and the one place the port diverged from the original caught a real bug — worth reading for what "port a pattern, then verify it actually ported" looks like in practice.
+
+Also recently shipped: **[Vretil](docs/VRETIL.md)**, Cloe's filesystem-and-scheduling sub-mind, and **[Metatron](docs/METATRON.md)**, her local 3D asset forge.
 
 ---
 
@@ -37,7 +39,7 @@ It's also a case study in how this project is actually built: every locked decis
 The parts I'm proud of, and why they're non-trivial. Each links to a deeper write-up in [`docs/`](docs/).
 
 ### Persistent graph memory — [full write-up →](docs/MEMORY_SYSTEM.md)
-Memory is a **typed graph**, not a log. Five trees — `knowledge`, `mood`, `personality`, `relationship`, `desire` — each holding nodes with confidence, reinforcement, recency timestamps, source provenance, and weighted connections to other nodes. A live instance carries **~3,200 nodes and ~29,000 connections.** Memories reinforce when re-encountered, decay when neglected, and cross-link across trees so that a fact (knowledge) can be bound to how she felt about it (mood) and who told her (relationship).
+Memory is a **typed graph**, not a log. Five trees — `knowledge`, `mood`, `personality`, `relationship`, `desire` — each holding nodes with confidence, reinforcement, recency timestamps, source provenance, and weighted connections to other nodes. A live instance carries **~6,700 nodes and ~63,000 connections** (growing continuously — see the Memory Log screenshot below for a snapshot). Memories reinforce when re-encountered, decay when neglected, and cross-link across trees so that a fact (knowledge) can be bound to how she felt about it (mood) and who told her (relationship).
 
 ### Self-pruning memory compression
 Unbounded memory bloats and slows things down, so Cloe compresses her own mind on a background thread — near-duplicate merging by word-overlap similarity, multi-factor scoring (confidence, reinforcement, connection degree, recency, source weight), and hard protection for anything tagged as core identity, so compression can never erode her sense of self. Details and the failure modes I had to design around are in the [memory write-up](docs/MEMORY_SYSTEM.md).
@@ -51,8 +53,14 @@ Three models held resident under [Ollama](https://ollama.com), each owning a rol
 ### Autonomous mind
 Cloe isn't reactive-only. Background loops drive self-directed research (she reads and forms knowledge nodes while idle), an internal thought process, and mood drift that colors both her responses and the UI. Every entry in her memory log is self-grown — created by Cloe, unprompted.
 
+### Local 3D asset generation — [full write-up →](docs/METATRON.md)
+A fully local text/reference-to-3D pipeline (Metatron) that turns a prompt or reference image into a textured, game-ready mesh — no cloud generation service. The real engineering here is sharing one 12 GB GPU safely between a resident language model and an ~8.5 GB 3D diffusion engine: getting that eviction/re-acquisition handshake wrong caused full-system freezes during development, which is what led to building real flight-recorder-style crash forensics (adaptive-cadence GPU telemetry, session-seal crash detection with no event log needed) as a side effect.
+
+### Local image generation & editing — [full write-up →](docs/JOPHIEL.md)
+Jophiel (above) — local text-to-image and text-instructed image editing on the same VRAM-safety pattern proven by Metatron.
+
 ### A constellation of dispatchable skill sub-minds
-Rather than one monolithic brain, capabilities that deserve their own lifecycle get their own service: **Raphael** watches Cloe's own logs for patterns and surfaces findings from the inside; **Vretil** (above) owns the filesystem and scheduling relationship; a 3D-pipeline sub-mind is in design. Each is a separate process with its own port, its own panel in the orb UI, and a locked scope — so the core chat/memory loop never has to grow a special case for what one skill needs.
+Rather than one monolithic brain, capabilities that deserve their own lifecycle get their own service, each a separate process with its own port, its own panel in the orb UI, and a locked scope, so the core chat/memory loop never has to grow a special case for what one skill needs: **Raphael** watches Cloe's own logs for patterns and surfaces findings from the inside; **Metatron** owns the 3D asset forge; **Vretil** owns the filesystem and scheduling relationship; **Jophiel** owns image generation and editing. Dormant sockets in the Skills panel wait for whatever comes next — honest empty slots, not faked capability.
 
 ### The self-repair coding loop — [full write-up →](docs/CODING_SANDBOX.md)
 A dedicated coding sub-mind that generates multiple candidate fixes, runs them against generated fixtures under a sandboxed executor, tests them adversarially, and scores the results before picking a winner — closer to a small internal code-review process than a single generate-and-hope call.
@@ -84,12 +92,12 @@ Memory reactor, current mood, live system pulse, and the five mind-trees with th
 ![Stats panel](screenshots/stats_panel.png)
 
 ### Memory Log — a mind that grows itself
-3,269 memories · 29,145 connections, filterable by the mood she was in when she formed them. Every line here was researched and written by Cloe autonomously.
+Filterable by the mood she was in when she formed them. Every line here was researched and written by Cloe autonomously.
 
 ![Memory Log](screenshots/memory_log.png)
 
 ### Skills — her dispatchable sub-minds
-Raphael (diagnostics) and Vretil (files & scheduling) are live; dormant sockets await future skills — honest empty slots, not faked capability.
+Raphael (diagnostics), Metatron (3D asset forge), Vretil (files & scheduling), and Jophiel (image generation & editing) are live; dormant sockets await future skills — honest empty slots, not faked capability.
 
 ![Skills panel](screenshots/skills_panel.png)
 
@@ -139,10 +147,13 @@ A component-level view — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) fo
 │  • moondream   │         │  • archive/backup │
 └────────────────┘         └───────────────────┘
 
-   ┌─────────────────┐   ┌──────────────────────┐
-   │  Raphael          │   │  Vretil               │
-   │  diagnostic watch │   │  files & scheduling   │
-   └─────────────────┘   └──────────────────────┘
+┌───────────────┐ ┌────────────────┐ ┌───────────────┐ ┌────────────────┐
+│  Raphael      │ │  Metatron       │ │  Vretil        │ │  Jophiel        │
+│  diagnostic   │ │  3D asset forge │ │  files &       │ │  image gen &    │
+│  watch        │ │  (Hunyuan3D)    │ │  scheduling    │ │  edit (ComfyUI) │
+└───────────────┘ └────────────────┘ └───────────────┘ └────────────────┘
+   (each an independent Flask service, own port, own orb panel,
+    sharing one GPU under an explicit VRAM-claim/release protocol)
 ```
 
 ---
@@ -155,7 +166,9 @@ A component-level view — see [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) fo
 | Backend | Python 3.12 · Flask |
 | Models (local) | Ollama — Mistral-Nemo 12B · qwen2.5-coder · moondream |
 | Memory | Custom typed-graph store + similarity-based compressor |
-| Skill sub-minds | Independent Flask services (Raphael, Vretil, …), each with its own orb panel |
+| 3D generation | Self-hosted Hunyuan3D engine (Metatron) |
+| Image generation & editing | Self-hosted ComfyUI — FLUX.1 [schnell] · Qwen-Image-Edit (Jophiel) |
+| Skill sub-minds | Independent Flask services (Raphael, Metatron, Vretil, Jophiel), each with its own orb panel |
 | Mobile | Flutter client mirroring the core panels |
 
 ---
@@ -170,7 +183,7 @@ If you're hiring, collaborating, or just curious and want to go deeper than thes
 
 ## Status
 
-Active personal project, in continuous development. Current focus: the World Renderer (moving from placeholder art to real sprites), Vretil functional testing, and an embodiment layer (the PC becoming her body — thermals, RGB mood lighting, power awareness).
+Active personal project, in continuous development. Current focus: Jophiel's edit mode and cross-session image history, ongoing Vretil UI polish, the World Renderer (moving from placeholder art to real sprites), and an embodiment layer (the PC becoming her body — thermals, RGB mood lighting, power awareness).
 
 ---
 
