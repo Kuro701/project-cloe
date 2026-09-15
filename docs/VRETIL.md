@@ -1,8 +1,8 @@
-# Vretil — the newest sub-mind
+# Vretil — files and scheduling
 
 Named for the angel-scribe of 2 Enoch — *"who writes down all the deeds of the Lord… and reads out the heavenly books."* Vretil is the skill that gives Cloe a standing, always-on relationship with your filesystem: browsing, searching, reading, summarizing, writing, and organizing files, plus a full scheduling and reminders system — all conversational, all running continuously rather than scoped to a single session.
 
-This is the most recently shipped major addition to the project, and a good example of how a feature moves from idea to running code here.
+Vretil shipped before Jophiel (Cloe's current newest addition — see [`JOPHIEL.md`](JOPHIEL.md)), and is a good example of how a feature moves from idea to running code here.
 
 ## What it does
 
@@ -22,6 +22,10 @@ Before anything was built, this went through a locked design pass that:
 - **Derived its visual identity from the real running app, not a guess.** Its assigned color slot was pulled directly from a color value already present — but dormant — in the orb's real source, matching the existing pattern of one reserved slot per skill. Its idle motion reuses the exact breathing/pulse animation vocabulary already shipping elsewhere in the UI (see [`ORB_UI.md`](ORB_UI.md)) rather than inventing a new style for one panel.
 - **Went through a genuine collaborative visual design pass** before a single line of UI code was written — the panel takes the form of a book (chat on the left page, a table of contents of tracked projects on the right), with its own hand-drawn sigil built at the real scale and construction of the existing orb art, so it sits convincingly next to the other skill panels rather than looking bolted on.
 
+## Bugs that only showed up once it was real
+
+A handful of integration bugs surfaced once Vretil was actually running alongside the rest of the live system rather than in isolation — the kind of thing that only shows up on real hardware, not in review. Two are worth naming because they're part of a recurring pattern documented in more depth in [`ORB_UI.md`](ORB_UI.md): a missing entry in the list of panels that should stay clickable while the orb is collapsed (fixed by adding it), and resize handles that were visually present but sat just outside the panel's registered click-through region (fixed by padding that region). Both were one-line fixes once correctly diagnosed, and both were caught because clicking-through every interactive element after a UI change is now treated as its own explicit step, not inferred from the panel looking right.
+
 ## Where it stands
 
-Vretil is built and running — visually confirmed on real hardware, including drag-and-drop and its native mounting inside the orb overlay (matching the pattern in [`ORB_UI.md`](ORB_UI.md) rather than opening as a separate window). A handful of integration bugs surfaced and were fixed during that first real-hardware pass — the kind of thing that only shows up once a feature is interacting with the rest of a live system rather than running in isolation. Functional testing of the conversational triggers, the scheduling round-trip, and the file-organization logic is the next step before it's considered fully proven out.
+Vretil is built and running — visually confirmed on real hardware, including drag-and-drop and its native mounting inside the orb overlay (matching the pattern in [`ORB_UI.md`](ORB_UI.md) rather than opening as a separate window). Functional testing of the conversational triggers, the scheduling round-trip, and the file-organization logic is the next step before it's considered fully proven out.
